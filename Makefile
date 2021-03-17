@@ -1,3 +1,11 @@
+#####################################
+# Real Time Embedded Systems
+# Project 1
+# 
+# Ⓒ 2021 K. Chatzis
+# kachatzis <at> ece.auth.gr
+#####################################
+
 GCC=gcc
 XGCC=arm-linux-gnueabihf-gcc
 

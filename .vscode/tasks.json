@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "task_clean",
+            "type": "shell",
+            "command": "cd ./src ; rm *.o",
+        },
+        {
+            "label": "task_compile",
+            "type": "shell",
+            "command": "cd src ; nvcc -o nvcc.o $(ls -n *.cpp) $(ls -n *.cu) $(ls -n *.c) -I 'C:/Program Files (x86)/Microsoft SDKs/MPI/Include' -I '../include' -L 'C:/Program Files (x86)/Microsoft SDKs/MPI/Lib/x64' -L 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2/lib/x64' -Xcompiler -fopenmp -lmsmpi -lcudart",
+            "dependsOn": ["task_clean"]
+        },
+    ]
+}

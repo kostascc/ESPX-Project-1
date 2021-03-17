@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "filesystem": "c",
+        "algorithm": "c",
+        "*.cu": "c"
+    }
+}

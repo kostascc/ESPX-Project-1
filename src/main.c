@@ -15,6 +15,7 @@
 #define DEFAULT_QUEUE_SIZE 1    // Default Size of Function Queue
 #define DEFAULT_FUNCTIONS_T 3   // Default Functions per Thread
 
+// #define DEBUG_QUEUE_INFO
 
 /**
  * Producer Thread Function
@@ -29,7 +30,14 @@ void *_f_consumer (void *q);
 /**
  * Work Function
  **/
-void *work(void){ printf("Work"); return NULL; }
+void work(void * arg){ 
+    // Get Variable from arguments 
+    int i = *((int *)arg);
+    // Print
+    printf("Work %d\n", i); 
+    // Return
+    return NULL; 
+}
 
 
 /**
@@ -189,15 +197,23 @@ void *_f_producer (void *inArgs)
             pthread_cond_wait (fifo->notFull, fifo->mut);
         }
 
-        workFunction* wf;
-        wf->work = (void *) (work);
-        void* arg = (void*)malloc(sizeof(int));
-        (wf->arg)  = (int)(idx*loop + i);
+        workFunction* wf = (workFunction*)malloc(sizeof(workFunction));
 
-        enqueue (fifo, wf);
+        
+        // Set Arguments
+        int* argi = (int*)malloc(sizeof(int));
+        argi[0] = idx*loop+i;
+        wf->arg  = (argi);
+
+        // Set Function
+        wf->work = (&work);
+        
+        // printf("arg: %d\n", (*((int*)(wf->arg))) );
+
+        enqueue (fifo, (workFunction*)wf);
         pthread_mutex_unlock (fifo->mut);
         pthread_cond_signal (fifo->notEmpty);
-        usleep (100000);
+        // usleep (100000);
     }
 
     // printf("producer %d: exit\n", idx);
@@ -210,9 +226,10 @@ void *_f_consumer (void *inArgs)
 {
     queue *fifo;
     int loop;
-    int i, d;
+    int i;
     int p, q;
     int idx;
+    workFunction* d /*= (workFunction**)malloc(sizeof(workFunction*)) */ ;
 
     fifo = (queue*) ((struct t_args*)inArgs)-> fifo;
     loop = (int)    ((struct t_args*)inArgs)-> loop;
@@ -223,20 +240,27 @@ void *_f_consumer (void *inArgs)
     int rec_count = (idx<q-1)? (loop*p)/q : ((loop*p)/q) + (loop*p)%q ;
     // printf("   Consumer %d To Receive %d\n", idx, rec_count);
 
-
     for (i = 0; i < rec_count ; i++) {
         pthread_mutex_lock (fifo->mut);
 
         while (fifo->empty) {
-            // printf ("consumer %d: queue EMPTY.\n", idx);
+
+            #ifdef DEBUG_QUEUE_INFO
+            printf ("consumer %d: queue EMPTY.\n", idx);
+            #endif
+
             pthread_cond_wait (fifo->notEmpty, fifo->mut);
         }
 
         dequeue (fifo, &d);
         pthread_mutex_unlock (fifo->mut);
         pthread_cond_signal (fifo->notFull);
-        printf ("consumer %d: rec %d.\n", idx, d);
-        usleep(200000);
+
+        //Call Function from pointer
+        (*(d->work))(d->arg);
+
+
+        // usleep(200000);
     }
 
     // printf("consumer %d: exit\n", idx);

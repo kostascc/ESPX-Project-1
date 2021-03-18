@@ -42,7 +42,7 @@ typedef struct {
  * @param notEmpty Queue Not Empty Condition (POSIX)
  **/
 typedef struct {
-  workFunction* buf;
+  workFunction** buf;
   long head, tail;
   int full, empty;
   int queueSize;
@@ -69,7 +69,7 @@ void queueDelete (queue *q);
  * @param q
  * @param in
  **/
-void enqueue (queue *q, workFunction in);
+void enqueue (queue *q, workFunction* in);
 
 /**
  * Remove (Dequeue) Function from Queue
@@ -77,7 +77,7 @@ void enqueue (queue *q, workFunction in);
  * @param q
  * @param out
  **/
-void dequeue (queue *q, workFunction *out);
+void dequeue (queue *q, workFunction **out);
 
 
 #endif

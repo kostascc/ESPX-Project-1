@@ -18,7 +18,7 @@ queue *queueInit (int size)
 
     q->queueSize = size;
 
-    q->buf = (struct workFunction*) malloc(q->queueSize * sizeof(workFunction));
+    q->buf = (workFunction**) malloc(q->queueSize * sizeof(workFunction*));
 
     q->empty = 1;
     q->full = 0;
@@ -45,8 +45,10 @@ void queueDelete (queue *q)
     free (q);
 }
 
-void enqueue (queue *q, workFunction in)
+void enqueue (queue *q, workFunction* in)
 {
+    printf(" >> Enqueue: %d\n", *((int*) in->arg) );
+    // printf("Enqueue Try\n\n");
     q->buf[q->tail] = in;
     q->tail++;
     if (q->tail == q->queueSize)
@@ -58,9 +60,12 @@ void enqueue (queue *q, workFunction in)
     return;
 }
 
-void dequeue (queue *q, workFunction* out)
+void dequeue (queue *q, workFunction** out)
 {
-    *out = q->buf[q->head];
+    *out = (q->buf[q->head]);
+
+    printf(" >> Dequeue: %d\n", (*((int*)((*out)->arg))));
+    // printf (" >> > Dequeue: %d.  [%d]\n", *((int*) (*out)->arg) , out);
 
     q->head++;
     if (q->head == q->queueSize)

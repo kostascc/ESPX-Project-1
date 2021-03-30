@@ -8,6 +8,9 @@
 
 #include <stdio.h>
 #include <pthread_fifo.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 
 #define DEFAULT_PRODUCERS 2     // Default Number of Producer Threads
@@ -15,9 +18,12 @@
 #define DEFAULT_QUEUE_SIZE 1    // Default Size of Function Queue
 #define DEFAULT_FUNCTIONS_T 3   // Default Functions per Thread
 
-#define PRINT_TIMER
+// #define PRINT_TIMER
+#define PRINT_FILE
 
 // #define DEBUG_QUEUE_INFO
+
+FILE *fp;
 
 /**
  * Producer Thread Function
@@ -29,25 +35,73 @@ void *_f_producer (void *q);
  **/
 void *_f_consumer (void *q);
 
+/** 
+ * Delay millisecods 
+ **/
+void delay_ms(int ms)
+{
+    // Storing start time
+    clock_t start_time = clock();
+  
+    // looping till required time is not achieved
+    while (clock() < start_time + ms*1000)
+        ;
+}
+
 /**
  * Work Function
  **/
 void work(void * arg){ 
     // Get Variable from arguments 
-    // int i = *((int *)arg);
-    // Print
-    // printf("Work %d\n", i); 
     struct timespec start = *((struct timespec *)arg);
-    struct timespec end = *((struct timespec *)arg+1);
+    struct timespec end;
 
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-    float delta_us = (float) ((end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000)/ (1000);
+    float delta_us = (float) ((end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000);
     #ifdef PRINT_TIMER
-        printf(" > took %f ms\n", delta_us);
+        printf(" > took %d us\n", delta_us);
     #endif
+    #ifdef PRINT_FILE
+        fprintf(fp, "%f\n", delta_us);
+        // printf("%f us\n", delta_us);
+    #endif
+
+    // for(int i=0; i<100; i++) ;
 
     // Return
     return NULL; 
+}
+
+
+/**
+ * Print Statistics
+ **/
+void print_stats(char* fname){
+
+    FILE *in = fopen(fname, "r");
+    
+    if (in != NULL) {
+        double sum = 0, sum_squares = 0, n = 0;
+        double val;
+        
+        while (fscanf(in, "%lf", &val) == 1) {
+            sum += val;
+            sum_squares += val * val;
+            ++n;
+        }
+
+        fclose(in);
+        
+        if (n > 0) {
+            double mean = (double)sum / n;
+            double variance = (double)sum_squares / n - (mean * mean);
+            double std_dev = sqrt(variance);
+            
+            printf("Mean: %f\nStdDev: %f\n", mean, std_dev);
+        }
+    }
+    
+    return 0;
 }
 
 
@@ -123,18 +177,23 @@ int main(int argc, char** argv)
 
     printf( "Producers: %d\nConsumers: %d\nQueue Size: %d\nFunctions per Producer: %d\n", p, q, s, l );
 
+    /* Initialize Output File */
+    #ifdef PRINT_FILE
+        char fname[80];
+        sprintf(fname, "out_p-%d_q-%d_s-%d.txt\0", p, q, s);
+        // sprintf(fname, "out.txt\0");
+        fp = fopen (fname, "w+");
+    #endif
+
 
     /***********************
      * Create & Run Queue
      ***********************/
-    // Initialize timer
-    time_t t;
-    srand((unsigned) time(&t));
 
     queue *fifo;
     // Initialize Producers and Consumers
     pthread_t* pro = (pthread_t*)malloc(p * sizeof(pthread_t));
-    pthread_t* con = (pthread_t*)malloc(p * sizeof(pthread_t));
+    pthread_t* con = (pthread_t*)malloc(q * sizeof(pthread_t));
 
     // Producer And Consumer FUnctions
     void *producer (void *args);
@@ -147,8 +206,17 @@ int main(int argc, char** argv)
         exit (1);
     }
 
-
-    
+    // Start Consumer Threads
+    for(int i=0; i<q; i++)
+    {    
+        t_args* _t_args = (t_args*) malloc(sizeof(t_args));
+        _t_args->fifo = fifo;
+        _t_args->loop = l;
+        _t_args->p = p;
+        _t_args->q = q;
+        _t_args->idx = i;
+        pthread_create (&(con[i]), NULL, _f_consumer, (void*)_t_args);
+    }    
 
     // Start Producer Threads
     for(int i=0; i<p; i++)
@@ -160,19 +228,6 @@ int main(int argc, char** argv)
         _t_args->q = q;
         _t_args->idx = i;
         pthread_create (&(pro[i]), NULL, _f_producer, (void*)_t_args);
-    }
-        
-
-    // Start Consumer Threads
-    for(int i=0; i<q; i++)
-    {    
-        t_args* _t_args = (t_args*) malloc(sizeof(t_args));
-        _t_args->fifo = fifo;
-        _t_args->loop = l;
-        _t_args->p = p;
-        _t_args->q = q;
-        _t_args->idx = i;
-        pthread_create (&(con[i]), NULL, _f_consumer, (void*)_t_args);
     }
 
     // Join Threads
@@ -187,6 +242,11 @@ int main(int argc, char** argv)
     free(pro);
     free(con); 
 
+    #ifdef PRINT_FILE
+        fclose(fp);
+    #endif
+
+    print_stats(fname);
 
     return 0;
 }
@@ -207,34 +267,36 @@ void *_f_producer (void *inArgs)
         pthread_mutex_lock (fifo->mut);
 
         while (fifo->full) {
-            // printf ("producer %d: queue FULL.\n", idx);
+            #ifdef DEBUG_QUEUE_INFO
+                printf ("producer %d: queue FULL.\n", idx);
+            #endif
+
             pthread_cond_wait (fifo->notFull, fifo->mut);
         }
 
         workFunction* wf = (workFunction*)malloc(sizeof(workFunction));
 
         /* Start Timer */
-        struct timespec start, end;
-        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+        // struct timespec start;
+        // clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
         // Set Arguments
-        struct timespec * argi = (struct timespec *)malloc(2*sizeof(struct timespec));
-        argi[0] = start;
-        argi[1] = end;
+        struct timespec * argi = (struct timespec *)malloc(sizeof(struct timespec));
+        // argi[0] = start;
+        clock_gettime(CLOCK_MONOTONIC_RAW, argi);
         wf->arg  = (argi);
 
         // Set Function
         wf->work = (&work);
         
-        // printf("arg: %d\n", (*((int*)(wf->arg))) );
-
         enqueue (fifo, (workFunction*)wf);
+
+        #ifdef DEBUG_QUEUE_INFO
+            printf ("> producer %d: enqueued.\n", idx);
+        #endif
         pthread_mutex_unlock (fifo->mut);
         pthread_cond_signal (fifo->notEmpty);
-        // usleep (100000);
     }
-
-    // printf("producer %d: exit\n", idx);
 
     return (NULL);
 }
@@ -256,15 +318,16 @@ void *_f_consumer (void *inArgs)
     idx  = (int)    ((struct t_args*)inArgs)-> idx;
 
     int rec_count = (idx<q-1)? (loop*p)/q : ((loop*p)/q) + (loop*p)%q ;
-    // printf("   Consumer %d To Receive %d\n", idx, rec_count);
 
-    for (i = 0; i < rec_count ; i++) {
+    // printf ("consumer %d: rec count %d.\n", idx, rec_count);
+
+    for(i=0; i<rec_count; i++) {
         pthread_mutex_lock (fifo->mut);
 
         while (fifo->empty) {
 
             #ifdef DEBUG_QUEUE_INFO
-            printf ("consumer %d: queue EMPTY.\n", idx);
+                printf ("consumer %d:     queue EMPTY.\n", idx);
             #endif
 
             pthread_cond_wait (fifo->notEmpty, fifo->mut);
@@ -277,11 +340,7 @@ void *_f_consumer (void *inArgs)
         //Call Function from pointer
         (*(d->work))(d->arg);
 
-
-        // usleep(200000);
     }
-
-    // printf("consumer %d: exit\n", idx);
 
     return (NULL);
 }

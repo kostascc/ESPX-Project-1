@@ -47,8 +47,6 @@ void queueDelete (queue *q)
 
 void enqueue (queue *q, workFunction* in)
 {
-    printf(" >> Enqueue: %d\n", *((int*) in->arg) );
-    // printf("Enqueue Try\n\n");
     q->buf[q->tail] = in;
     q->tail++;
     if (q->tail == q->queueSize)
@@ -63,10 +61,6 @@ void enqueue (queue *q, workFunction* in)
 void dequeue (queue *q, workFunction** out)
 {
     *out = (q->buf[q->head]);
-
-    printf(" >> Dequeue: %d\n", (*((int*)((*out)->arg))));
-    // printf (" >> > Dequeue: %d.  [%d]\n", *((int*) (*out)->arg) , out);
-
     q->head++;
     if (q->head == q->queueSize)
         q->head = 0;

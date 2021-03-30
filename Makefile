@@ -2,7 +2,7 @@
 # Real Time Embedded Systems
 # Project 1
 # 
-# Ⓒ 2021 K. Chatzis
+# Ⓒ 2021 Kostas Chatzis
 # kachatzis <at> ece.auth.gr
 #####################################
 
@@ -15,7 +15,7 @@ XGCC_FLAGS=-O3
 INC_DIR=./include
 SRC_DIR=./src
 
-LIB=-lpthread 
+LIB=-lpthread -lm
 
 
 ################################

@@ -15,6 +15,8 @@
 #define DEFAULT_QUEUE_SIZE 1    // Default Size of Function Queue
 #define DEFAULT_FUNCTIONS_T 3   // Default Functions per Thread
 
+#define PRINT_TIMER
+
 // #define DEBUG_QUEUE_INFO
 
 /**
@@ -32,9 +34,18 @@ void *_f_consumer (void *q);
  **/
 void work(void * arg){ 
     // Get Variable from arguments 
-    int i = *((int *)arg);
+    // int i = *((int *)arg);
     // Print
-    printf("Work %d\n", i); 
+    // printf("Work %d\n", i); 
+    struct timespec start = *((struct timespec *)arg);
+    struct timespec end = *((struct timespec *)arg+1);
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    float delta_us = (float) ((end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000)/ (1000);
+    #ifdef PRINT_TIMER
+        printf(" > took %f ms\n", delta_us);
+    #endif
+
     // Return
     return NULL; 
 }
@@ -116,6 +127,9 @@ int main(int argc, char** argv)
     /***********************
      * Create & Run Queue
      ***********************/
+    // Initialize timer
+    time_t t;
+    srand((unsigned) time(&t));
 
     queue *fifo;
     // Initialize Producers and Consumers
@@ -199,10 +213,14 @@ void *_f_producer (void *inArgs)
 
         workFunction* wf = (workFunction*)malloc(sizeof(workFunction));
 
-        
+        /* Start Timer */
+        struct timespec start, end;
+        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+
         // Set Arguments
-        int* argi = (int*)malloc(sizeof(int));
-        argi[0] = idx*loop+i;
+        struct timespec * argi = (struct timespec *)malloc(2*sizeof(struct timespec));
+        argi[0] = start;
+        argi[1] = end;
         wf->arg  = (argi);
 
         // Set Function
